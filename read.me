@@ -1,0 +1,29 @@
+// termmsg.c — minimal terminal messenger prototype (no external libs)
+// DISCLAIMER: This is an educational prototype. The “encryption” below is a toy XOR stream
+// and is NOT cryptographically secure. Do not use for real secrets. Replace with a proven
+// cipher (e.g., libsodium/ChaCha20-Poly1305) for real security.
+//
+// Features:
+// - One user per PC: a 32-byte hex key stored at ~/.termmsg/key.hex (your inbox key).
+// - Send messages to anyone whose key you have (you encrypt with THEIR key).
+// - Messages are relayed by a dumb server that cannot decrypt (it just stores blobs).
+// - Messages are one-time: when a client receives, the server deletes them.
+// - Optional local saving of conversations (plaintext) on receiver side.
+//
+// Build (POSIX):
+// cc -O2 -Wall -Wextra -o termmsg termmsg.c
+//
+// Usage:
+// ./termmsg keygen # generate your local key at ~/.termmsg/key.hex
+// ./termmsg server <host> <port> # run relay server, e.g., 0.0.0.0 5555
+// ./termmsg send <host> <port> <recipient_key_hex> "message text"
+// ./termmsg recv <host> <port> [--save path]
+//
+// Protocol (very simple, line-based over TCP):
+// SEND <recipient_key_hex> <hex_ciph_len>\n
+// <hex(ciphertext)>\n
+// -> server replies: OK\n or ERR\n
+// RECV <your_key_hex>\n -> server replies:
+// COUNT <n>\n then for each i in [1..n]:
+// MSG <hex_len>\n <hex(ciphertext)>\n
+// Server stores messages in files under ./queue/<recipient_key_hex>.msgs
